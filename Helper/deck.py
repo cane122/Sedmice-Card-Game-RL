@@ -1,6 +1,6 @@
 import random
 import csv
-from card import Card
+from Helper.card import Card
 
 class Deck:
     def __init__(self):
