@@ -1,0 +1,5 @@
+# Ignore the deck.csv file
+deck.csv
+
+# Ignore the precut_deck directory
+precut_deck
