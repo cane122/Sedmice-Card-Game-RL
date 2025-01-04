@@ -3,7 +3,7 @@ import sys
 from pygame.locals import *
 import random
 # Assuming you've defined Player and Deck correctly
-from player import Player
+from Helper.player import Player
 from deck import Deck
 from card import Card
 
