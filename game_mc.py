@@ -186,14 +186,14 @@ def run_game(mode, number):
 
         
         mouse_pos = None  # Initialize mouse_pos at the beginning of the loop
-
+        cards_in_the_deck = player1.hand + deck.cards
         if current_player == player2 and bot:  # Assuming player2 is the computer
             # Get bot's decision
             card_index, should_pass = bot.choose_move(
                 player2.hand,
                 cards_in_the_middle,
+                cards_in_the_deck,
                 len(player1.hand),
-                len(deck),
                 current_player == initiative_player
             )
             
@@ -213,13 +213,12 @@ def run_game(mode, number):
                 current_player = player1 if current_player == player2 else player2
 
         pygame.time.wait(500)
-
+        #Checks if you can play the card
         for event in pygame.event.get():
             if event.type == QUIT:
                 pygame.quit()
                 sys.exit()
             elif event.type == MOUSEBUTTONDOWN:
-                # Get the mouse position
                 mouse_pos = event.pos
                 if current_player == initiative_player:
                     if button_rect.collidepoint(mouse_pos):
