@@ -47,7 +47,7 @@ class MonteCarloBot:
                     
                     score = self._simulate_game(
                         deepcopy(new_player_hand),
-                        new_middle,
+                        deepcopy(new_middle),
                         deepcopy(deck_copy),
                         opponent_hand_size,
                         is_initiative
@@ -63,7 +63,7 @@ class MonteCarloBot:
             move_scores[move] /= self.num_simulations
         if is_initiative and card_in_middle:
             pass_score /= self.num_simulations
-
+        print(move_scores)
         # Find best move
         best_move_score = max(move_scores.values(), default=-float('inf'))
         
@@ -82,7 +82,7 @@ class MonteCarloBot:
     
     def _calculate_penalty(self, card):
         """Calculate strategic penalty for playing certain cards."""
-        return 10 if card.rank == "7" else 0
+        return 10 if card.rank == "7" or card.rank == "10" or card.rank == "Ace" else 0
     
     def _is_playable(self, card, card_in_middle, is_initiative):
         """Check if a card is playable in the current state."""
@@ -93,69 +93,83 @@ class MonteCarloBot:
         if card.rank == "7":
             return True
         return card.rank == card_in_middle[-1].rank if card_in_middle else True
+    def _is_playable_light(self, card, card_in_middle):
+        """Check if a card is playable in the current state."""
+        if not card_in_middle:
+            return True
+        if card.rank == "7":
+            return True
+        return card.rank == card_in_middle[-1].rank if card_in_middle else True
 
     def _simulate_game(self, player_hand, middle_cards, deck, opponent_hand_size, is_initiative):
         """Simulate a game from the current state."""
-        score = 0
         # Create opponent's initial hand
         opp_hand = []
         while len(opp_hand) < opponent_hand_size and deck:
             opp_hand.append(deck.pop(random.randrange(len(deck))))
-
-        while deck or player_hand or opp_hand:
-            # Draw cards if needed
-            while len(player_hand) < 4 and deck:
-                player_hand.append(deck.pop(random.randrange(len(deck))))
-                opp_hand.append(deck.pop(random.randrange(len(deck))))
-            
-            # Play the hand
-            hand_score, player_hand, opp_hand = self._play_hand(
-                player_hand, opp_hand, middle_cards.copy(), is_initiative,is_initiative
-            )
-            middle_cards = []
-            score += hand_score
-            
-            if not player_hand and not deck:
-                break
-                
+        #calculte who's turn it is
+        turn = is_initiative if len(middle_cards)%2 == 0 else not is_initiative
+        # Play the hand
+        hand_score, player_hand, opp_hand = self._play_hand(
+            player_hand, opp_hand, middle_cards, is_initiative,turn
+        )
+        score = hand_score
+        print(score)
         return score
     
     def _play_hand(self, player_hand, opp_hand, middle_cards, is_initiative, turn):
         """Simulate playing a single hand."""
+        #if all cards played
         if not player_hand and not opp_hand:
             return (sum(card.get_score() for card in middle_cards) if is_initiative 
                    else -sum(card.get_score() for card in middle_cards)), player_hand, opp_hand
-        print( player_hand)
-        print(opp_hand)
-        print(middle_cards)
-        print(is_initiative)
-        print(turn)
+        #if last card did not "kill" (pass condition)
+        if len(middle_cards) >= 2 and len(middle_cards) % 2 == 0 and \
+                not self._is_playable_light(middle_cards[-1], middle_cards[:-1]):
+            score = sum(card.get_score() for card in middle_cards)
+            return score if is_initiative else -score, player_hand, opp_hand
+        print("player hand\n", player_hand)
+        print("opp hand\n",opp_hand)
+        print("middle cards\n",middle_cards)
+        print("has initiative\n", is_initiative)
+        print("it is bots == 1 or opponents == 0 turn\n",turn)
+        print("----------")
         if turn:
             # Bot's turn
-            valid_moves = [card for card in player_hand if self._is_playable(card, middle_cards, is_initiative)]
+            valid_moves = [card for card in player_hand if self._is_playable_light(card, middle_cards)]
+            #if bot has no moves
             if not valid_moves and is_initiative:
-                return -sum(card.get_score() for card in middle_cards), player_hand, opp_hand
+                print("1")
+                return -sum(card.get_score() for card in middle_cards) + -5, player_hand, opp_hand
+            #if bot has no moves but has to play
             if not valid_moves:
-                played_card = random.choice(valid_moves)
-                new_player_hand = [c for c in player_hand if c != played_card]
-                middle_cards.append(played_card)
-            if valid_moves:
                 played_card = random.choice(player_hand)
                 new_player_hand = [c for c in player_hand if c != played_card]
                 middle_cards.append(played_card)
+                print("2")
+                return -sum(card.get_score() for card in middle_cards), player_hand, opp_hand
+            #Normal play
+            if valid_moves:
+                played_card = random.choice(valid_moves)
+                new_player_hand = [c for c in player_hand if c != played_card]
+                middle_cards.append(played_card)
+                print("3")
             return self._play_hand(new_player_hand, opp_hand, middle_cards,is_initiative, False)
         else:
             # Opponent's turn
-            valid_moves = [card for card in opp_hand if self._is_playable(card, middle_cards, not is_initiative)]
+            valid_moves = [card for card in opp_hand if self._is_playable_light(card, middle_cards)]
             if not valid_moves and not is_initiative:
-                return sum(card.get_score() for card in middle_cards), player_hand, opp_hand
+                print("4")
+                return sum(card.get_score() for card in middle_cards) + 5, player_hand, opp_hand
             if not valid_moves:
-                played_card = random.choice(valid_moves)
-                new_opp_hand = [c for c in opp_hand if c != played_card]
-                middle_cards.append(played_card)
-            else:
                 played_card = random.choice(opp_hand)
                 new_opp_hand = [c for c in opp_hand if c != played_card]
                 middle_cards.append(played_card)
-            
+                print("5")
+                return sum(card.get_score() for card in middle_cards), player_hand, opp_hand
+            else:
+                played_card = random.choice(valid_moves)
+                new_opp_hand = [c for c in opp_hand if c != played_card]
+                middle_cards.append(played_card)
+                print("6")
             return self._play_hand(player_hand, new_opp_hand, middle_cards,is_initiative, True)
